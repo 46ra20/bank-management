@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-c)2m#=#i9ofw1o&$=jj=(7ch-ly5f^ar_1us8ss_m)d_u@jm=-
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
-
+CSRF_TRUSTED_ORIGINS=['https://bank-management-gpr8.onrender.com']
 
 # Application definition
 
