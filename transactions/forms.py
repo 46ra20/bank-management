@@ -1,5 +1,5 @@
 from django import forms
-from .models import Transaction
+from .models import Transaction,BalanceTransferModel
 class TransactionForm(forms.ModelForm):
     class Meta:
         model = Transaction
@@ -31,6 +31,7 @@ class DepositForm(TransactionForm):
 
         return amount
 
+    
 
 class WithdrawForm(TransactionForm):
 
@@ -65,3 +66,11 @@ class LoanRequestForm(TransactionForm):
         amount = self.cleaned_data.get('amount')
 
         return amount
+    
+
+
+
+class BalanceTransferForm(forms.ModelForm):
+    class Meta:
+        model = BalanceTransferModel
+        fields = ['account_number','amount']

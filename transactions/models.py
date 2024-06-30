@@ -14,3 +14,13 @@ class Transaction(models.Model):
     
     class Meta:
         ordering = ['timestamp'] 
+
+
+class BalanceTransferModel(models.Model):
+    account = models.ForeignKey(UserBankAccount,on_delete=models.CASCADE,related_name='balance_transfer')
+    account_number = models.IntegerField()
+    amount = models.DecimalField(max_digits=12,decimal_places=2)
+    data_timte = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.account

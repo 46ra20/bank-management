@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.views import View
 from django.http import HttpResponse
 from django.views.generic import CreateView, ListView
-from transactions.constants import DEPOSIT, WITHDRAWAL,LOAN, LOAN_PAID
+from transactions.constants import DEPOSIT, WITHDRAWAL,LOAN, LOAN_PAID,SEND_MONEY,RECIVE_MONEY
 from django.core.mail import EmailMessage, EmailMultiAlternatives
 from django.template.loader import render_to_string
 from datetime import datetime
@@ -15,8 +15,12 @@ from transactions.forms import (
     DepositForm,
     WithdrawForm,
     LoanRequestForm,
+    BalanceTransferForm
 )
 from transactions.models import Transaction
+from transactions.models import UserBankAccount
+
+from django.shortcuts import render
 
 def send_transaction_email(user, amount, subject, template):
         message = render_to_string(template, {
@@ -60,9 +64,7 @@ class DepositMoneyView(TransactionCreateMixin):
     def form_valid(self, form):
         amount = form.cleaned_data.get('amount')
         account = self.request.user.account
-        # if not account.initial_deposit_date:
-        #     now = timezone.now()
-        #     account.initial_deposit_date = now
+
         account.balance += amount # amount = 200, tar ager balance = 0 taka new balance = 0+200 = 200
         account.save(
             update_fields=[
@@ -76,6 +78,7 @@ class DepositMoneyView(TransactionCreateMixin):
         )
         send_transaction_email(self.request.user, amount, "Deposite Message", "transactions/deposite_email.html")
         return super().form_valid(form)
+
 
 
 class WithdrawMoneyView(TransactionCreateMixin):
@@ -192,3 +195,52 @@ class LoanListView(LoginRequiredMixin,ListView):
         queryset = Transaction.objects.filter(account=user_account,transaction_type=3)
         print(queryset)
         return queryset
+    
+
+def BlanceTransferView(request):
+    if request.method =='POST':
+        form = BalanceTransferForm(request.POST)
+        if form.is_valid():
+            account_number = form.data['account_number']
+            amount = form.data['amount']
+
+            try:
+                find_account = UserBankAccount.objects.get(account_no=account_number)
+            except UserBankAccount.DoesNotExist:
+                find_account = None
+            
+            current_user = request.user.account
+        
+            if find_account:
+                find_account.balance += int(amount) # amount = 200, tar ager balance = 0 taka new balance = 0+200 = 200
+                find_account.save(
+                    update_fields=[
+                        'balance'
+                    ]
+                )
+                current_user.balance -= int(amount)
+                current_user.save(
+                    update_fields=[
+                        'balance'
+                    ]
+                )
+
+                Transaction.objects.create(
+                    account = current_user,
+                    amount=amount,
+                    balance_after_transaction=current_user.balance,
+                    transaction_type=SEND_MONEY
+                )
+                Transaction.objects.create(
+                    account = find_account,
+                    amount=amount,
+                    balance_after_transaction=find_account.balance,
+                    transaction_type=RECIVE_MONEY
+                )
+                messages.success(request,
+                f'Successfully send money {"{:,.2f}".format(float(amount))}$ from your account to {find_account.user.first_name} {find_account.user.last_name}')
+                send_transaction_email(request.user, amount, "Send Money", "transactions/send_money.html")
+            else:
+                messages.warning(request,"Sorry account number is not valid")
+    form = BalanceTransferForm()
+    return render(request,'transactions/balance_transfer.html',{'form':form})
